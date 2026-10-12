@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>همراه‌دارو — نسخه متصل به Firebase</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#edf4f6;color:#13263d;font-family:Tahoma,Arial,sans-serif}.app{max-width:430px;min-height:100vh;margin:auto;background:#fff;padding-bottom:82px;box-shadow:0 0 30px #0001}header{padding:24px;background:linear-gradient(135deg,#0b2948,#117f83);color:#fff;border-radius:0 0 28px 28px}header h1{margin:8px 0;font-size:27px}.content{padding:18px}.page{display:none}.page.active{display:block}.card{border:1px solid #e0eaed;border-radius:20px;padding:17px;margin:12px 0;box-shadow:0 8px 24px #173b5010}.next{background:#f0fbfa;border:2px solid #7edbd3}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.icon{font-size:32px}.pill{background:#d9f5f2;color:#087a76;padding:6px 10px;border-radius:999px;font-size:12px}.muted{color:#657688;font-size:13px;line-height:1.9}h2{font-size:20px}button{font-family:inherit;font-weight:bold;border:0;border-radius:15px;padding:14px;cursor:pointer}.primary{background:#087f7a;color:white;width:100%;margin-top:14px}.danger{background:#fff0f0;color:#c23838;width:100%;margin-top:12px;border:1px solid #ffd0d0}.secondary{background:#e7eef5;color:#17324d}.status{padding:10px;border-radius:12px;background:#f5f8fa;margin-top:10px}.success{background:#edfbf2;border:1px solid #bde9ca;color:#21633a}.alert{background:#fff7e8;border:1px solid #ffe0a3}.pharmacy{border:1px solid #dfe9ec;border-radius:16px;padding:14px;margin:10px 0;cursor:pointer}.pharmacy.selected{border:2px solid #087f7a;background:#f0fbfa}input{width:100%;padding:13px;border:1px solid #d9e5e8;border-radius:12px;margin:6px 0;font-family:inherit}nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid #dce7ea;display:flex;justify-content:space-around;padding:9px 4px 12px;z-index:5}nav button{background:none;color:#607080;padding:6px 9px;font-size:12px}nav button.active{color:#087f7a}
+</style>
+</head>
+<body><div class="app">
+<header><small>سامانه هوشمند مدیریت دارو</small><h1>همراه‌دارو 💊</h1><div id="welcome">در حال اتصال...</div></header>
+<main class="content">
+<section id="auth" class="page active"><h2>🔐 ورود با شماره موبایل</h2>
+<div class="card"><div class="muted">شماره را با کد کشور وارد کنید؛ مثال ایران: <b>+989121234567</b></div>
+<input id="phone" placeholder="+989xxxxxxxxx" dir="ltr">
+<div id="recaptcha-container" style="margin:10px 0"></div>
+<button class="primary" onclick="sendCode()">ارسال کد تأیید</button>
+<div id="codeBox" style="display:none"><input id="code" placeholder="کد پیامک" inputmode="numeric" dir="ltr"><button class="primary" onclick="verifyCode()">تأیید و ورود</button></div>
+<div id="authMsg"></div></div>
+</section>
+<section id="home" class="page"><h2>وضعیت امروز</h2><div class="card next"><div class="row"><span class="icon">💊</span><span class="pill">داروی بعدی</span></div><h2 id="nextMed">هنوز دارویی ثبت نشده</h2><div class="muted" id="nextTime">—</div><button class="primary" onclick="taken()">مصرف کردم ✓</button><div id="taken"></div></div><div class="card alert"><strong>🚑 تحویل اضطراری دارو</strong><div class="muted">این نسخه سفارش را در Firebase ثبت می‌کند؛ پرداخت و اتصال واقعی داروخانه در مرحله بعد اضافه می‌شود.</div><button class="danger" onclick="createOrder()">ثبت درخواست اضطراری</button><div id="orderMsg"></div></div></section>
+<section id="meds" class="page"><h2>داروهای من</h2><div class="card"><input id="medName" placeholder="نام دارو"><input id="medTime" type="time"><input id="medQty" type="number" min="1" placeholder="تعداد باقی‌مانده"><button class="primary" onclick="addMedication()">➕ ذخیره دارو در Firebase</button></div><div id="medList"></div></section>
+<section id="family" class="page"><h2>👨‍👩‍👧 خانواده</h2><div class="card"><strong>اتصال خانواده</strong><p class="muted">در نسخه بعدی، عضو خانواده با حساب خودش به سالمند متصل می‌شود و وضعیت مصرف را می‌بیند.</p><div class="status success">Firebase فعال است ✓</div></div></section>
+<section id="tracking" class="page"><h2>📦 سفارش‌ها</h2><div id="orders"></div></section>
+<section id="account" class="page"><h2>👤 حساب</h2><div class="card"><div id="userInfo" class="muted">—</div><button class="danger" onclick="logout()">خروج</button></div></section>
+</main><nav><button class="active" onclick="show('home',this)">🏠<br>خانه</button><button onclick="show('meds',this)">💊<br>داروها</button><button onclick="show('family',this)">👨‍👩‍👧<br>خانواده</button><button onclick="show('tracking',this)">📦<br>سفارش</button><button onclick="show('account',this)">👤<br>حساب</button></nav></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyAXhr1ql797EqKKSQGXwJpQl3Fo_z4pDhw",authDomain:"hamrahdaro.firebaseapp.com",projectId:"hamrahdaro",storageBucket:"hamrahdaro.firebasestorage.app",messagingSenderId:"92528222063",appId:"1:92528222063:web:4e301a66fcaffeaf8d929a",measurementId:"G-4MR702F7HP"};
+const app=initializeApp(firebaseConfig); const auth=getAuth(app); const db=getFirestore(app);
+let confirmationResult=null, verifier=null, currentUser=null;
+
+window.show=(id,btn)=>{document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');scrollTo(0,0)};
+function msg(t,ok=false){document.getElementById('authMsg').innerHTML=`<div class="status ${ok?'success':'alert'}">${t}</div>`}
+window.sendCode=async()=>{try{const phone=document.getElementById('phone').value.trim();if(!/^\+[1-9]\d{7,14}$/.test(phone)){msg('شماره را با + و کد کشور وارد کن؛ مثال +989121234567');return}if(!verifier)verifier=new RecaptchaVerifier(auth,'recaptcha-container',{size:'normal'});confirmationResult=await signInWithPhoneNumber(auth,phone,verifier);document.getElementById('codeBox').style.display='block';msg('کد تأیید ارسال شد.');}catch(e){msg('ارسال کد ناموفق بود: '+e.message)}};
+window.verifyCode=async()=>{try{const code=document.getElementById('code').value.trim();if(!confirmationResult){msg('اول روی ارسال کد تأیید بزن.');return}await confirmationResult.confirm(code);msg('ورود با موفقیت انجام شد ✓',true)}catch(e){msg('کد صحیح نیست یا منقضی شده است.')}};
+window.logout=()=>signOut(auth);
+
+onAuthStateChanged(auth,async u=>{currentUser=u;if(u){document.getElementById('welcome').textContent='خوش آمدی 👋';document.getElementById('userInfo').innerHTML=`شماره: <b dir="ltr">${u.phoneNumber||'—'}</b><br>شناسه کاربر Firebase: <small>${u.uid}</small>`;document.getElementById('auth').classList.remove('active');document.getElementById('home').classList.add('active');await setDoc(doc(db,'users',u.uid),{phone:u.phoneNumber||'',role:'elderly',updatedAt:serverTimestamp()},{merge:true});loadMeds();loadOrders()}else{document.getElementById('welcome').textContent='برای شروع وارد حساب شو';document.getElementById('auth').classList.add('active');document.getElementById('home').classList.remove('active')}});
+
+function loadMeds(){const q=query(collection(db,'medications'),where('ownerUid','==',currentUser.uid),orderBy('time','asc'));onSnapshot(q,s=>{const meds=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('medList').innerHTML=meds.map(m=>`<div class="card"><div class="row"><span class="icon">💊</span><div><b>${m.name}</b><div class="muted">هر روز — ${m.time} — ${m.qty} عدد</div></div><span class="pill">${m.qty}</span></div></div>`).join('')||'<div class="card muted">هنوز دارویی ثبت نشده.</div>';const n=meds[0];document.getElementById('nextMed').textContent=n?n.name:'هنوز دارویی ثبت نشده';document.getElementById('nextTime').textContent=n?`امروز، ساعت ${n.time}`:'—';});}
+window.addMedication=async()=>{if(!currentUser){alert('ابتدا وارد شو.');return}const name=document.getElementById('medName').value.trim(),time=document.getElementById('medTime').value,qty=Number(document.getElementById('medQty').value);if(!name||!time||qty<1){alert('نام، ساعت و تعداد را کامل کن.');return}await addDoc(collection(db,'medications'),{ownerUid:currentUser.uid,name,time,qty,active:true,createdAt:serverTimestamp()});document.getElementById('medName').value='';document.getElementById('medTime').value='';document.getElementById('medQty').value='';alert('دارو در Firebase ذخیره شد ✓');}
+window.taken=async()=>{if(!currentUser){alert('ابتدا وارد شو.');return}await addDoc(collection(db,'medicationLogs'),{ownerUid:currentUser.uid,status:'consumed',createdAt:serverTimestamp()});document.getElementById('taken').innerHTML='<div class="status success">✓ مصرف دارو در Firebase ثبت شد.</div>'};
+window.createOrder=async()=>{if(!currentUser){alert('ابتدا وارد شو.');return}const medicine=prompt('نام داروی اضطراری:');if(!medicine)return;await addDoc(collection(db,'orders'),{ownerUid:currentUser.uid,medicine,qty:1,status:'در انتظار بررسی',createdAt:serverTimestamp()});document.getElementById('orderMsg').innerHTML='<div class="status success">✓ سفارش در Firebase ثبت شد.</div>';show('tracking');}
+function loadOrders(){const q=query(collection(db,'orders'),where('ownerUid','==',currentUser.uid),orderBy('createdAt','desc'));onSnapshot(q,s=>{document.getElementById('orders').innerHTML=s.docs.map(d=>{const o=d.data();return `<div class="card"><b>سفارش ${d.id.slice(-6)}</b><div class="muted">دارو: ${o.medicine}</div><div class="status">${o.status}</div></div>`}).join('')||'<div class="card muted">هنوز سفارشی ثبت نشده.</div>'})}
+</script></body></html>
