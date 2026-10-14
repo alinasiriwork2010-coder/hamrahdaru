@@ -1,0 +1,26 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>همراه‌دارو</title>
+<style>
+body{margin:0;background:#f4f8fb;color:#17324d;font-family:Tahoma,Arial,sans-serif}.wrap{max-width:520px;margin:auto;background:white;min-height:100vh}header{padding:28px 20px;color:white;background:linear-gradient(135deg,#087f8c,#1857a4);border-radius:0 0 28px 28px}main,#login{padding:18px}.card{padding:18px;margin-bottom:14px;border:1px solid #e1ebf1;border-radius:20px;box-shadow:0 4px 15px #0000000d}input,button{width:100%;padding:14px;margin:6px 0;border-radius:12px;font-size:16px;box-sizing:border-box}input{border:1px solid #ccd9e2}button{border:0;font-weight:bold;cursor:pointer}.primary{background:#087f8c;color:#fff}.google{background:white;border:1px solid #ccd9e2}.danger{background:#fff0f0;color:#b42318}.muted{color:#718398;font-size:13px}.med{display:flex;align-items:center;justify-content:space-between;gap:10px}.med button{width:auto}.pill{display:inline-block;padding:7px 12px;background:#e8f7f7;border-radius:20px;color:#087f8c}
+#app{display:none}
+</style></head><body><div class="wrap"><header><h1>همراه‌دارو 💊</h1><p>هیچ دوزی فراموش نمی‌شود؛ هیچ سالمندی تنها نمی‌ماند.</p></header>
+<section id="login"><div class="card"><h2>ورود به همراه‌دارو</h2><p class="muted">ورود با Google — بدون نیاز به پیامک</p><button id="googleBtn" class="google">🔵 ورود با حساب Google</button><div id="status"></div></div></section>
+<section id="app"><main><div class="card"><h2>سلام 👋</h2><div id="userInfo" class="muted"></div></div>
+<div class="card"><h2>داروی بعدی</h2><div id="nextMed"><span class="pill">هنوز دارویی ثبت نشده</span></div></div>
+<div class="card"><h2>داروهای من</h2><div id="meds"></div></div>
+<div class="card"><h2>افزودن دارو</h2><input id="medName" placeholder="نام دارو"><input id="medTime" type="time"><input id="medStock" type="number" min="0" placeholder="تعداد"><button id="addBtn" class="primary">➕ افزودن دارو</button></div>
+<div class="card"><h2>کیف پول</h2><span class="pill">موجودی آزمایشی: ۰ تومان</span><button id="logout" class="danger">خروج از حساب</button></div></main></section></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import{getFirestore,collection,addDoc,onSnapshot,query,where,serverTimestamp,doc,setDoc}from"https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyAXhr1ql797EqKKSQGXwJpQl3Fo_z4pDhw",authDomain:"hamrahdaro.firebaseapp.com",projectId:"hamrahdaro",storageBucket:"hamrahdaro.firebasestorage.app",messagingSenderId:"92528222063",appId:"1:92528222063:web:4e301a66fcaffe8d929a",measurementId:"G-4MR702F7HP"};
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
+const $=x=>document.getElementById(x);let uid="";
+$("googleBtn").onclick=async()=>{ $("status").textContent="در حال ورود...";try{await signInWithPopup(auth,provider)}catch(e){$("status").textContent="ورود ناموفق: "+(e.code||e.message)}};
+$("logout").onclick=()=>signOut(auth);
+onAuthStateChanged(auth,async u=>{if(!u){$("login").style.display="block";$("app").style.display="none";return}uid=u.uid;$("login").style.display="none";$("app").style.display="block";$("userInfo").textContent=(u.displayName||"کاربر")+" • "+(u.email||"");await setDoc(doc(db,"users",uid),{name:u.displayName||"",email:u.email||"",updatedAt:serverTimestamp()},{merge:true});listen()});
+function listen(){const q=query(collection(db,"medications"),where("ownerUid","==",uid));onSnapshot(q,s=>{let a=s.docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(x.time||"").localeCompare(y.time||""));$("meds").innerHTML=a.length?a.map(m=>'<div class="card med"><div><b>'+esc(m.name)+'</b><div class="muted">'+(m.time||"--:--")+" • موجودی: "+(m.stock??0)+'</div></div><button class="primary" onclick="consume(''+m.id+"')">مصرف کردم</button></div>").join(""):"<p class='muted'>هنوز دارویی ثبت نشده.</p>";if(a[0])$("nextMed").innerHTML="<b>"+esc(a[0].name)+"</b> — "+(a[0].time||"--:--")})}
+$("addBtn").onclick=async()=>{let n=$("medName").value.trim(),t=$("medTime").value,s=Number($("medStock").value||0);if(!n||!t)return alert("نام دارو و ساعت را وارد کن.");await addDoc(collection(db,"medications"),{ownerUid:uid,name:n,time:t,stock:s,createdAt:serverTimestamp()});$("medName").value="";$("medTime").value="";$("medStock").value=""};
+window.consume=async id=>{await addDoc(collection(db,"medicationLogs"),{ownerUid:uid,medicationId:id,status:"consumed",consumedAt:serverTimestamp()});alert("مصرف دارو ثبت شد ✅")};
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+</script></body></html>
